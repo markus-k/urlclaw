@@ -1,0 +1,5 @@
+[workspace]
+members = [
+  "urlclaw-core",
+  "urlclaw-server"
+]
