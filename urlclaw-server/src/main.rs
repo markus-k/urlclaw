@@ -10,9 +10,10 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use urlclaw_core::repository::memory::InMemoryRepository;
-use urlclaw_core::repository::RepositoryError;
+use urlclaw_core::repository::{sqlx::SqlxRepository, RepositoryError};
 use urlclaw_core::service;
+
+type SharedRepo = Arc<Mutex<SqlxRepository>>;
 
 #[tokio::main]
 async fn main() {
@@ -20,13 +21,20 @@ async fn main() {
 
     println!("Listening on http://{bind}");
 
-    let mem_repo = Arc::new(Mutex::new(InMemoryRepository::default()));
+    //let mem_repo = Arc::new(Mutex::new(InMemoryRepository::default()));
+
+    let database_url =
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_owned());
+    let sqlx_repo = SqlxRepository::new(&database_url).await.unwrap();
+    sqlx_repo.migrate().await.unwrap();
+
+    let repo = Arc::new(Mutex::new(sqlx_repo));
 
     let router = Router::new()
         .route("/", get(index))
         .route("/", post(create_shorturl))
         .route("/:path", get(handle_path))
-        .layer(Extension(mem_repo));
+        .layer(Extension(repo));
 
     axum::Server::bind(&bind.parse().unwrap())
         .serve(router.into_make_service())
@@ -59,7 +67,7 @@ struct CreateShortUrlIn {
 
 async fn create_shorturl(
     Form(data): Form<CreateShortUrlIn>,
-    Extension(repo): Extension<Arc<Mutex<InMemoryRepository>>>,
+    Extension(repo): Extension<SharedRepo>,
 ) -> impl IntoResponse {
     let short_url = service::create_shorturl(
         &mut *repo.lock().await,
@@ -85,7 +93,7 @@ async fn create_shorturl(
 
 async fn handle_path(
     Path(path): Path<String>,
-    Extension(repo): Extension<Arc<Mutex<InMemoryRepository>>>,
+    Extension(repo): Extension<SharedRepo>,
 ) -> impl IntoResponse {
     let short_url = service::get_shorturl_target(&mut *repo.lock().await, &path).await;
 

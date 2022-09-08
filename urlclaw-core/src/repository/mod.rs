@@ -6,6 +6,7 @@ use thiserror::Error;
 use crate::models::ShortUrl;
 
 pub mod memory;
+pub mod sqlx;
 
 #[derive(Debug, Error, PartialEq)]
 pub enum RepositoryError<E: Debug + Error> {
