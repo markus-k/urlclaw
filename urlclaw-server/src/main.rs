@@ -17,7 +17,9 @@ type SharedRepo = Arc<Mutex<SqlxRepository>>;
 
 #[tokio::main]
 async fn main() {
-    let bind = "127.0.0.1:8000";
+    let port = std::env::var("PORT").map_or(80, |p| p.parse().expect("can't parse PORT"));
+    let bind_addr = std::env::var("BIND_ADDR").unwrap_or_else(|_| "127.0.0.1".to_owned());
+    let bind = format!("{bind_addr}:{port}");
 
     println!("Listening on http://{bind}");
 
