@@ -81,8 +81,8 @@ async fn create_shorturl(
     match short_url {
         Ok(short_url) => {
             let template = CreatedShortUrlTemplate {
-                short: short_url.short,
-                target: short_url.target,
+                short: short_url.short_url().to_owned(),
+                target: short_url.target_url().to_string(),
             };
             Html(template.render().unwrap()).into_response()
         }
@@ -102,8 +102,8 @@ async fn handle_path(
     match short_url {
         Ok(short_url) => (
             StatusCode::TEMPORARY_REDIRECT,
-            [(header::LOCATION, short_url.target.clone())],
-            format!("Path: {short_url:?}"),
+            [(header::LOCATION, short_url.target_url().to_string())],
+            format!("Redirecting to {}", short_url.target_url()),
         )
             .into_response(),
         Err(service::ServiceError::Repository(RepositoryError::NoUrlFound)) => {

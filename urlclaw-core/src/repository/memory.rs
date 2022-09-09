@@ -32,7 +32,7 @@ impl ShortUrlRepository for InMemoryRepository {
         let short_urls = self
             .urls
             .iter()
-            .filter(|short_url| short_url.short == short)
+            .filter(|short_url| short_url.short_url() == short)
             .collect::<Vec<_>>();
 
         if short_urls.len() > 1 {
@@ -51,7 +51,7 @@ impl ShortUrlRepository for InMemoryRepository {
         if self
             .urls
             .iter()
-            .filter(|s| s.short == short_url.short)
+            .filter(|s| s.short_url() == short_url.short_url())
             .count()
             == 0
         {
@@ -70,7 +70,8 @@ mod tests {
     async fn test_inmemory_repo() {
         let mut repo = InMemoryRepository::default();
 
-        let short_url = ShortUrl::new("rust".to_owned(), "https://rust-lang.org".to_owned());
+        let short_url =
+            ShortUrl::new("rust".to_owned(), "https://rust-lang.org".parse().unwrap()).unwrap();
 
         repo.create_shorturl(&short_url).await.unwrap();
 

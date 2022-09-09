@@ -1,5 +1,4 @@
 use thiserror::Error;
-use uuid::Uuid;
 
 use crate::models::ShortUrl;
 use crate::repository::{RepositoryError, ShortUrlRepository};
@@ -21,11 +20,7 @@ pub async fn create_shorturl<R: ShortUrlRepository>(
 where
     <R as ShortUrlRepository>::StorageError: 'static,
 {
-    let short_url = ShortUrl {
-        id: Uuid::new_v4(),
-        short,
-        target,
-    };
+    let short_url = ShortUrl::new(short, target.parse().unwrap()).unwrap();
 
     repository.create_shorturl(&short_url).await?;
 

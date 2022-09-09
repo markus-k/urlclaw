@@ -44,23 +44,19 @@ impl ShortUrlRepository for SqlxRepository {
                 Err(e) => Err(RepositoryError::StorageError(e)),
             }?;
 
-        Ok(ShortUrl {
-            id: row.0,
-            short: row.1,
-            target: row.2,
-        })
+        Ok(ShortUrl::from_db(row.0, row.1, row.2).unwrap())
     }
 
     async fn create_shorturl(
         &mut self,
         short_url: &ShortUrl,
     ) -> Result<(), RepositoryError<Self::StorageError>> {
-        match self.get_from_short(&short_url.short).await {
+        match self.get_from_short(short_url.short_url()).await {
             Err(RepositoryError::NoUrlFound) => {
                 sqlx::query("INSERT INTO short_urls (id, short, target) VALUES ($1, $2, $3)")
-                    .bind(short_url.id)
-                    .bind(&short_url.short)
-                    .bind(&short_url.target)
+                    .bind(short_url.uuid())
+                    .bind(&short_url.short_url())
+                    .bind(&short_url.target_url().to_string())
                     .execute(&self.pool)
                     .await?;
                 Ok(())
