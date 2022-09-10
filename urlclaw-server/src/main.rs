@@ -10,8 +10,8 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use urlclaw_core::repository::{sqlx::SqlxRepository, RepositoryError};
 use urlclaw_core::service;
+use urlclaw_core::{repository::sqlx::SqlxRepository, UrlclawError};
 
 type SharedRepo = Arc<Mutex<SqlxRepository>>;
 
@@ -86,7 +86,7 @@ async fn create_shorturl(
             };
             Html(template.render().unwrap()).into_response()
         }
-        Err(service::ServiceError::Repository(RepositoryError::AlreadyExists)) => {
+        Err(UrlclawError::ShortAlreadyExists) => {
             format!("Sorry, short already exists.").into_response()
         }
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("fail: {e:?}")).into_response(),
@@ -106,7 +106,7 @@ async fn handle_path(
             format!("Redirecting to {}", short_url.target_url()),
         )
             .into_response(),
-        Err(service::ServiceError::Repository(RepositoryError::NoUrlFound)) => {
+        Err(UrlclawError::UrlNotFound) => {
             (StatusCode::NOT_FOUND, format!("short not found")).into_response()
         }
         Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, format!("fail")).into_response(),

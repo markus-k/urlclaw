@@ -1,14 +1,8 @@
 use async_trait::async_trait;
-use thiserror::Error;
 
 use crate::models::ShortUrl;
-use crate::repository::{RepositoryError, ShortUrlRepository};
-
-#[derive(Debug, Error, PartialEq)]
-pub enum InMemoryError {
-    #[error("The given short url is not unique in the repository.")]
-    NotUnique,
-}
+use crate::repository::ShortUrlRepository;
+use crate::UrlclawError;
 
 #[derive(Debug)]
 pub struct InMemoryRepository {
@@ -23,31 +17,21 @@ impl Default for InMemoryRepository {
 
 #[async_trait]
 impl ShortUrlRepository for InMemoryRepository {
-    type StorageError = InMemoryError;
-
-    async fn get_from_short(
-        &mut self,
-        short: &str,
-    ) -> Result<ShortUrl, RepositoryError<Self::StorageError>> {
+    async fn get_from_short(&mut self, short: &str) -> Result<ShortUrl, UrlclawError> {
         let short_urls = self
             .urls
             .iter()
             .filter(|short_url| short_url.short_url() == short)
             .collect::<Vec<_>>();
 
-        if short_urls.len() > 1 {
-            Err(RepositoryError::StorageError(InMemoryError::NotUnique))
-        } else if short_urls.len() == 0 {
-            Err(RepositoryError::NoUrlFound)
+        if short_urls.len() == 0 {
+            Err(UrlclawError::UrlNotFound)
         } else {
             Ok(short_urls.first().unwrap().to_owned().clone())
         }
     }
 
-    async fn create_shorturl(
-        &mut self,
-        short_url: &ShortUrl,
-    ) -> Result<(), RepositoryError<Self::StorageError>> {
+    async fn create_shorturl(&mut self, short_url: &ShortUrl) -> Result<(), UrlclawError> {
         if self
             .urls
             .iter()
@@ -57,7 +41,7 @@ impl ShortUrlRepository for InMemoryRepository {
         {
             Ok(self.urls.push(short_url.clone()))
         } else {
-            Err(RepositoryError::AlreadyExists)
+            Err(UrlclawError::ShortAlreadyExists)
         }
     }
 }

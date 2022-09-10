@@ -4,7 +4,8 @@ use sqlx::postgres::{PgPool, PgPoolOptions};
 use uuid::Uuid;
 
 use crate::models::ShortUrl;
-use crate::repository::{RepositoryError, ShortUrlRepository};
+use crate::repository::ShortUrlRepository;
+use crate::UrlclawError;
 
 #[derive(Debug)]
 pub struct SqlxRepository {
@@ -12,13 +13,13 @@ pub struct SqlxRepository {
 }
 
 impl SqlxRepository {
-    pub async fn new(db_url: &str) -> Result<Self, RepositoryError<sqlx::Error>> {
+    pub async fn new(db_url: &str) -> Result<Self, UrlclawError> {
         let pool = PgPoolOptions::new().connect(db_url).await?;
 
         Ok(Self { pool })
     }
 
-    pub async fn migrate(&self) -> Result<(), RepositoryError<sqlx::migrate::MigrateError>> {
+    pub async fn migrate(&self) -> Result<(), sqlx::migrate::MigrateError> {
         sqlx::migrate!().run(&self.pool).await?;
 
         Ok(())
@@ -27,12 +28,7 @@ impl SqlxRepository {
 
 #[async_trait]
 impl ShortUrlRepository for SqlxRepository {
-    type StorageError = sqlx::Error;
-
-    async fn get_from_short(
-        &mut self,
-        short: &str,
-    ) -> Result<ShortUrl, RepositoryError<Self::StorageError>> {
+    async fn get_from_short(&mut self, short: &str) -> Result<ShortUrl, UrlclawError> {
         let row: (Uuid, String, String) =
             match sqlx::query_as("SELECT id, short, target FROM short_urls WHERE short = $1")
                 .bind(short)
@@ -40,19 +36,16 @@ impl ShortUrlRepository for SqlxRepository {
                 .await
             {
                 Ok(row) => Ok(row),
-                Err(sqlx::Error::RowNotFound) => Err(RepositoryError::NoUrlFound),
-                Err(e) => Err(RepositoryError::StorageError(e)),
+                Err(sqlx::Error::RowNotFound) => Err(UrlclawError::UrlNotFound),
+                Err(e) => Err(UrlclawError::Database(e)),
             }?;
 
         Ok(ShortUrl::from_db(row.0, row.1, row.2).unwrap())
     }
 
-    async fn create_shorturl(
-        &mut self,
-        short_url: &ShortUrl,
-    ) -> Result<(), RepositoryError<Self::StorageError>> {
+    async fn create_shorturl(&mut self, short_url: &ShortUrl) -> Result<(), UrlclawError> {
         match self.get_from_short(short_url.short_url()).await {
-            Err(RepositoryError::NoUrlFound) => {
+            Err(UrlclawError::UrlNotFound) => {
                 sqlx::query("INSERT INTO short_urls (id, short, target) VALUES ($1, $2, $3)")
                     .bind(short_url.uuid())
                     .bind(&short_url.short_url())
@@ -61,7 +54,7 @@ impl ShortUrlRepository for SqlxRepository {
                     .await?;
                 Ok(())
             }
-            Ok(_) => Err(RepositoryError::AlreadyExists),
+            Ok(_) => Err(UrlclawError::ShortAlreadyExists),
             Err(e) => Err(e),
         }
     }

@@ -1,6 +1,8 @@
 use url::Url;
 use uuid::Uuid;
 
+use crate::UrlclawError;
+
 /// allowed characters allowed in short urls,  according to RFC 3986 section 2.3
 pub const ALLOWED_SHORT_CHARACTERS: &'static str =
     "abcdefghjkilmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~";
@@ -14,9 +16,9 @@ pub struct ShortUrl {
 }
 
 impl ShortUrl {
-    pub fn new(short: String, target: Url) -> Result<Self, ()> {
+    pub fn new(short: String, target: Url) -> Result<Self, UrlclawError> {
         if !check_short_is_safe(&short) {
-            Err(())
+            Err(UrlclawError::ShortUrlInvalid)
         } else {
             Ok(Self {
                 id: Uuid::new_v4(),
@@ -26,11 +28,11 @@ impl ShortUrl {
         }
     }
 
-    pub fn from_db(id: Uuid, short: String, target: String) -> Result<Self, ()> {
+    pub fn from_db(id: Uuid, short: String, target: String) -> Result<Self, UrlclawError> {
         Ok(Self {
             id,
             short: short.to_owned(),
-            target: target.parse().unwrap(),
+            target: target.parse()?,
         })
     }
 
