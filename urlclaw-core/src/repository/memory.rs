@@ -21,7 +21,7 @@ impl ShortUrlRepository for InMemoryRepository {
         let short_urls = self
             .urls
             .iter()
-            .filter(|short_url| short_url.short_url() == short)
+            .filter(|short_url| short_url.short_url().as_str() == short)
             .collect::<Vec<_>>();
 
         if short_urls.len() == 0 {

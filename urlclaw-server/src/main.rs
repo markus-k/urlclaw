@@ -81,7 +81,7 @@ async fn create_shorturl(
     match short_url {
         Ok(short_url) => {
             let template = CreatedShortUrlTemplate {
-                short: short_url.short_url().to_owned(),
+                short: short_url.short_url().as_str().to_owned(),
                 target: short_url.target_url().to_string(),
             };
             Html(template.render().unwrap()).into_response()

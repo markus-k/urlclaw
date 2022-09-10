@@ -40,15 +40,15 @@ impl ShortUrlRepository for SqlxRepository {
                 Err(e) => Err(UrlclawError::Database(e)),
             }?;
 
-        Ok(ShortUrl::from_db(row.0, row.1, row.2).unwrap())
+        Ok(ShortUrl::from_db(row.0, row.1, row.2)?)
     }
 
     async fn create_shorturl(&mut self, short_url: &ShortUrl) -> Result<(), UrlclawError> {
-        match self.get_from_short(short_url.short_url()).await {
+        match self.get_from_short(short_url.short_url().as_str()).await {
             Err(UrlclawError::UrlNotFound) => {
                 sqlx::query("INSERT INTO short_urls (id, short, target) VALUES ($1, $2, $3)")
                     .bind(short_url.uuid())
-                    .bind(&short_url.short_url())
+                    .bind(&short_url.short_url().as_str())
                     .bind(&short_url.target_url().to_string())
                     .execute(&self.pool)
                     .await?;
