@@ -7,7 +7,7 @@ use crate::models::ShortUrl;
 use crate::repository::ShortUrlRepository;
 use crate::UrlclawError;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SqlxRepository {
     pool: PgPool,
 }

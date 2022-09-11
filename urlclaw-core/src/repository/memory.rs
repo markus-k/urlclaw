@@ -4,15 +4,9 @@ use crate::models::ShortUrl;
 use crate::repository::ShortUrlRepository;
 use crate::UrlclawError;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct InMemoryRepository {
     urls: Vec<ShortUrl>,
-}
-
-impl Default for InMemoryRepository {
-    fn default() -> Self {
-        Self { urls: Vec::new() }
-    }
 }
 
 #[async_trait]
@@ -24,7 +18,7 @@ impl ShortUrlRepository for InMemoryRepository {
             .filter(|short_url| short_url.short_url().as_str() == short)
             .collect::<Vec<_>>();
 
-        if short_urls.len() == 0 {
+        if short_urls.is_empty() {
             Err(UrlclawError::UrlNotFound)
         } else {
             Ok(short_urls.first().unwrap().to_owned().clone())
@@ -39,7 +33,8 @@ impl ShortUrlRepository for InMemoryRepository {
             .count()
             == 0
         {
-            Ok(self.urls.push(short_url.clone()))
+            self.urls.push(short_url.clone());
+            Ok(())
         } else {
             Err(UrlclawError::ShortAlreadyExists)
         }

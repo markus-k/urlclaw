@@ -7,13 +7,10 @@ use axum::{
     Router,
 };
 use serde::Deserialize;
-use std::sync::Arc;
-use tokio::sync::Mutex;
-
 use urlclaw_core::service;
 use urlclaw_core::{repository::sqlx::SqlxRepository, UrlclawError};
 
-type SharedRepo = Arc<Mutex<SqlxRepository>>;
+type SharedRepo = SqlxRepository;
 
 #[tokio::main]
 async fn main() {
@@ -30,7 +27,7 @@ async fn main() {
     let sqlx_repo = SqlxRepository::new(&database_url).await.unwrap();
     sqlx_repo.migrate().await.unwrap();
 
-    let repo = Arc::new(Mutex::new(sqlx_repo));
+    let repo = sqlx_repo; // no need to Arc and mutex here
 
     let router = Router::new()
         .route("/", get(index))
@@ -71,12 +68,8 @@ async fn create_shorturl(
     Form(data): Form<CreateShortUrlIn>,
     Extension(repo): Extension<SharedRepo>,
 ) -> impl IntoResponse {
-    let short_url = service::create_shorturl(
-        &mut *repo.lock().await,
-        data.short.clone(),
-        data.target.clone(),
-    )
-    .await;
+    let short_url =
+        service::create_shorturl(&mut repo.clone(), data.short.clone(), data.target.clone()).await;
 
     match short_url {
         Ok(short_url) => {
@@ -86,9 +79,7 @@ async fn create_shorturl(
             };
             Html(template.render().unwrap()).into_response()
         }
-        Err(UrlclawError::ShortAlreadyExists) => {
-            format!("Sorry, short already exists.").into_response()
-        }
+        Err(UrlclawError::ShortAlreadyExists) => "Sorry, short already exists.".into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("fail: {e:?}")).into_response(),
     }
 }
@@ -97,7 +88,7 @@ async fn handle_path(
     Path(path): Path<String>,
     Extension(repo): Extension<SharedRepo>,
 ) -> impl IntoResponse {
-    let short_url = service::get_shorturl_target(&mut *repo.lock().await, &path).await;
+    let short_url = service::get_shorturl_target(&mut repo.clone(), &path).await;
 
     match short_url {
         Ok(short_url) => (
@@ -107,8 +98,8 @@ async fn handle_path(
         )
             .into_response(),
         Err(UrlclawError::UrlNotFound) => {
-            (StatusCode::NOT_FOUND, format!("short not found")).into_response()
+            (StatusCode::NOT_FOUND, "short not found").into_response()
         }
-        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, format!("fail")).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("fail: {e:?}")).into_response(),
     }
 }
