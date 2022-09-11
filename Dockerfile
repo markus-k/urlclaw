@@ -1,9 +1,11 @@
+# syntax=docker/dockerfile:1.3
 FROM rust:1.63 as builder
 
 WORKDIR /src
 COPY ./ /src/
 
-RUN cargo install --path urlclaw-server/
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    cargo install --path urlclaw-server/
 
 FROM debian:bullseye-slim
 
