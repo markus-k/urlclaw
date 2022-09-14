@@ -1,0 +1,19 @@
+services:
+  urlclaw:
+    build: .
+    environment:
+      DATABASE_URL: "postgres://urlclaw:urlclaw@database/urlclaw"
+    ports:
+      - "8000:80"
+
+  database:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: "urlclaw"
+      POSTGRES_PASSWORD: "urlclaw"
+      POSTGRES_DB: "urlclaw"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
