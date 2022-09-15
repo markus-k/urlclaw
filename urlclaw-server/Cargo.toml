@@ -9,7 +9,13 @@ edition = "2021"
 urlclaw-core = { path = "../urlclaw-core" }
 
 axum = "0.5"
+axum-extra = { version = "0.3", features = ["cookie", "cookie-signed"] }
 axum-macros = "0.2"
+base64 = "0.13"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 askama = "0.11.1"
+url = "2.3"
+time = "0.3"
+
+openidconnect = { version = "2.3", features = ["accept-rfc3339-timestamps"] }

@@ -1,14 +1,18 @@
 use askama::Template;
+use auth::Authenticated;
 use axum::{
     extract::{Extension, Form, Path},
     http::{header, StatusCode},
     response::{Html, IntoResponse},
-    routing::{get, post},
+    routing::get,
     Router,
 };
+use axum_extra::extract::cookie::Key;
 use serde::Deserialize;
 use urlclaw_core::service;
 use urlclaw_core::{repository::sqlx::SqlxRepository, UrlclawError};
+
+mod auth;
 
 type SharedRepo = SqlxRepository;
 
@@ -29,11 +33,28 @@ async fn main() {
 
     let repo = sqlx_repo; // no need to Arc and mutex here
 
+    let cookie_key = match std::env::var("COOKIE_KEY") {
+        Ok(encoded_key) => {
+            Key::from(&base64::decode(encoded_key).expect("Can't decode COOKIE_KEY")[..])
+        }
+        Err(std::env::VarError::NotPresent) => {
+            let key = Key::generate();
+
+            let encoded_key = base64::encode(key.master());
+            println!("Generated COOKIE_KEY: {encoded_key}");
+
+            key
+        }
+        Err(_) => panic!("Can't parse COOKIE_KEY"),
+    };
+
     let router = Router::new()
-        .route("/", get(index))
-        .route("/", post(create_shorturl))
+        .route("/", get(index).post(create_shorturl))
+        .nest("/auth", auth::make_auth_router().await)
+        .route("/dashboard", get(dashboard))
         .route("/:path", get(handle_path))
-        .layer(Extension(repo));
+        .layer(Extension(repo))
+        .layer(Extension(cookie_key));
 
     axum::Server::bind(&bind.parse().unwrap())
         .serve(router.into_make_service())
@@ -102,4 +123,8 @@ async fn handle_path(
         }
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("fail: {e:?}")).into_response(),
     }
+}
+
+async fn dashboard(Authenticated { user_id }: Authenticated) -> impl IntoResponse {
+    format!("hi {user_id}")
 }
