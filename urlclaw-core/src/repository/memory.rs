@@ -12,16 +12,14 @@ pub struct InMemoryRepository {
 #[async_trait]
 impl ShortUrlRepository for InMemoryRepository {
     async fn get_from_short(&mut self, short: &str) -> Result<ShortUrl, UrlclawError> {
-        let short_urls = self
+        if let Some(short_url) = self
             .urls
             .iter()
-            .filter(|short_url| short_url.short_url().as_str() == short)
-            .collect::<Vec<_>>();
-
-        if short_urls.is_empty() {
-            Err(UrlclawError::UrlNotFound)
+            .find(|short_url| short_url.short_url().as_str() == short)
+        {
+            Ok(short_url.clone())
         } else {
-            Ok(short_urls.first().unwrap().to_owned().clone())
+            Err(UrlclawError::UrlNotFound)
         }
     }
 
